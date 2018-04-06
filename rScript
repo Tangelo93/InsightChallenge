@@ -1,0 +1,133 @@
+getwd()
+setwd("C:/Users/xliang41/Documents/git/InsightChallenge/input")
+install.packages("caret")
+library(data.table)
+library(dplyr)
+library(tidyr)
+library(R.utils)
+library(corrplot)
+library(caret)
+
+#Loads all the files from the path specified
+#list.filenames <-
+#  list.files(path = "C:/Users/xliang41/Documents/git/InsightChallenge/input/logData/log2017060", pattern =
+#               ".csv")
+#for (i in 1:(length(list.filenames))) {
+#  fileName <- paste0("log2017060", i )
+#  assign(paste0("inputData_", i),
+#        read.csv(
+#         paste("../input/logData/", fileName, ".csv", sep = ""),
+#          header = T,
+#          na.strings = c("")
+#         ))
+#}
+
+#binding the names of all dataframes in in one string which can be used for bind the rows of datframes
+#dataframe_name <-
+# c(
+#   'inputData_1',
+#   'inputData_2',
+#  'inputData_3'
+#  )
+#x.list <- lapply(dataframe_name, get)
+
+
+#read file
+#inputData_1 <-
+# read.csv(
+#   "C:/Users/xliang41/Documents/git/InsightChallenge/input/logData/log20170601.csv",
+#   header = T,
+#   na.strings = ("")
+# )
+#keeping only 6 features that relevant to the project
+#inputData_1 <- inputData_1[, c(1:3, 5:7)]
+#inputData_2<-inputData_2[,c(1:3,5:7)]
+#inputData_3<-inputData_3[,c(1:3,5:7)]
+
+#inputData_combine <- do.call(rbind, x.list)
+
+#gc()
+
+#deleting the other datframes variables [Tell Che]
+#for (i in 1:(length(list.filenames))) {
+#  assign(paste0("inputData_", i),rm())
+#}
+
+#inputData_complete<-inputData_combine
+
+#rm(x.list)
+#rm(dataframe_name)
+#rm(inputData_)
+#rm(list.filenames)
+
+#gc()
+
+#inputData_1<-inputData_1[order(inputData_1$date,inputData_1$ip,inputData_1$accession, inputData_1$time),]
+#a <- data.table(inputData_1[1:100000, ])
+#write.csv(a, "Satidyrmple_A.csv")
+
+a <-
+  read.csv(
+    "/Users/xiaojunliang/Downloads/Sample_A.csv",
+    header = T,
+    na.strings = ("")
+  )
+
+a$X<-NULL
+a <- a[order(a$date, a$ip, a$accession, a$time), ]
+unique(a$ip) 
+unique(a$accession)
+
+df<-a
+
+#date and time of the first webpage request in the session
+df<-
+  df%>%
+  group_by(unique(ip) & unique(accession))%>%
+  mutate(First_webRequest_date = if_else(date == min(date), date, as.Date(NA)))
+
+
+df<-
+  df%>%
+  group_by(unique(ip) & unique(accession)) %>%
+  mutate(First_webRequest_time = if_else(time == head(time), time,as.factor(NA)) )
+
+
+#date and time of the laset webpage request in the session
+df<-
+  df%>%
+  group_by(unique(ip) & unique(accession)) %>%
+  mutate(Last_webRequest_date = if_else(date == max(date), date, as.Date(NA)))
+
+df<-
+  df%>%
+  group_by(unique(ip) & unique(accession)) %>% unique(ip,accession)%>%
+  mutate(Last_webRequest_time = if_else(time == tail(time), First_webRequest_time, as.factor(NA)))
+
+
+#duration of the session in seconds
+
+df <-
+  df %>%
+  group_by(unique(ip) & unique(accession)) %>% 
+  mutate(Duration = if_else(
+    is.na(cik),
+    -10,
+    as.numeric(tail(Last_webRequest_time) - head(First_webRequest_time))
+  ))
+
+
+#count of webpage requests during the session
+df$ip<-as.integer(df$ip)
+df$accession<-as.integer(df$accession)
+df<-df %>% 
+  group_by(unique(ip) & unique(accession))%>% 
+  mutate(web_request = ifelse(is.na(cik),0,as.integer(dplyr::count(cik, c("ip", "accession")))))
+
+
+
+#output
+y<-df[,c(1,7:11)]
+y<-data.table(y)
+write.table(y,"output.txt", sep = ",")
+gc()
